@@ -1,7 +1,7 @@
 program Palapasabra;
 {
     Trabajo final para Programación II.
-    v0.9 (Puede que lo siga después de la entrega).
+    v0.9.2 (Puede que lo siga después de la entrega).
 }
 
 const INPUTMAX = 2; { Si lo dejo en 1 y escribo 30... lo reconoce como 3, por lo que String[2] es suficiente }
@@ -21,7 +21,6 @@ type StringInput = String[INPUTMAX];
     end;
     FileJugadores = file of reg_jugador;
     FileRosco = file of reg_palabra;
-    GameMode = (Menu, Juego, Finalizado);
     RoscoMode = (Pendiente, Acertada, Errada);
     ArbolJugadores = ^NodoJugador;
     NodoJugador = record
@@ -44,66 +43,66 @@ type StringInput = String[INPUTMAX];
     ArregloPartida = array[1..2] of reg_partida;
     
     
-function FileIsExists(var archivo : FileJugadores) : boolean;
+function FileIsExists(var FJugadores : FileJugadores) : boolean;
 begin
     {$I-}
-    reset(archivo);
+    reset(FJugadores);
     {$I+}
     FileIsExists := (IOResult = 0);
 end;
 
 { BEGIN: Sistema de Jugadores }
-function JugadorExiste(arbol : ArbolJugadores; nombre : string) : boolean;
+function JugadorExiste(AJugadores : ArbolJugadores; nombre : string) : boolean;
 begin
     JugadorExiste := false;
-    if arbol <> nil then
+    if AJugadores <> nil then
     begin
-        if arbol^.Nombre > nombre then
-            JugadorExiste := JugadorExiste(arbol^.Izquierda, nombre)
-        else if arbol^.Nombre < nombre then
-            JugadorExiste := JugadorExiste(arbol^.Derecha, nombre)
+        if AJugadores^.Nombre > nombre then
+            JugadorExiste := JugadorExiste(AJugadores^.Izquierda, nombre)
+        else if AJugadores^.Nombre < nombre then
+            JugadorExiste := JugadorExiste(AJugadores^.Derecha, nombre)
         else
             JugadorExiste := true;
     end;
 end;
 
-procedure AgregarJugadorArchivo(var archivo : FileJugadores; jugador : reg_jugador);
+procedure AgregarJugadorArchivo(var FJugadores : FileJugadores; RJugador : reg_jugador);
 begin
-    reset(archivo);
-    seek(archivo, filesize(archivo));
-    write(archivo, jugador);
-    close(archivo);
+    reset(FJugadores);
+    seek(FJugadores, filesize(FJugadores));
+    write(FJugadores, RJugador);
+    close(FJugadores);
 end;
 
-function CrearNodoJugador(jugador : reg_jugador) : ArbolJugadores;
+function CrearNodoJugador(RJugador : reg_jugador) : ArbolJugadores;
 var nodo : ArbolJugadores;
 begin
     new(nodo);
-    nodo^.Nombre := jugador.nombre;
-    nodo^.PartidasGanadas := jugador.partidas_ganadas;
+    nodo^.Nombre := RJugador.nombre;
+    nodo^.PartidasGanadas := RJugador.partidas_ganadas;
     nodo^.Izquierda := nil;
     nodo^.Derecha := nil;
     
     CrearNodoJugador := nodo;
 end;
 
-procedure InsertarJugadorArbol(var arbol : ArbolJugadores; nodo : ArbolJugadores);
+procedure InsertarJugadorArbol(var AJugadores : ArbolJugadores; NodoJugador : ArbolJugadores);
 begin
-    if arbol = nil then
-        arbol := nodo
-    else if arbol^.Nombre > nodo^.Nombre then
-        InsertarJugadorArbol(arbol^.Izquierda, nodo)
+    if AJugadores = nil then
+        AJugadores := NodoJugador
+    else if AJugadores^.Nombre > NodoJugador^.Nombre then
+        InsertarJugadorArbol(AJugadores^.Izquierda, NodoJugador)
     else
-        InsertarJugadorArbol(arbol^.Derecha, nodo);
+        InsertarJugadorArbol(AJugadores^.Derecha, NodoJugador);
 end;
 
-procedure AgregarJugador(var archivo : FileJugadores; var arbol : ArbolJugadores);
+procedure AgregarJugador(var FJugadores : FileJugadores; var AJugadores : ArbolJugadores);
 var nombreJugador : string;
-    registro : reg_jugador;
+    RJugador : reg_jugador;
 begin
     WriteLn('Ingrese el nombre del jugador...');
     write('> '); readln(nombreJugador);
-    if JugadorExiste(arbol, nombreJugador) then
+    if JugadorExiste(AJugadores, nombreJugador) then
     begin
         WriteLn('Ese nombre ya existe, intente nuevamente.');
         WriteLn();
@@ -115,169 +114,170 @@ begin
     end
     else
     begin
-        registro.nombre := nombreJugador;
-        registro.partidas_ganadas := 0;
-        AgregarJugadorArchivo(archivo, registro);
-        InsertarJugadorArbol(arbol, CrearNodoJugador(registro));
+        RJugador.nombre := nombreJugador;
+        RJugador.partidas_ganadas := 0;
+        AgregarJugadorArchivo(FJugadores, RJugador);
+        InsertarJugadorArbol(AJugadores, CrearNodoJugador(RJugador));
         WriteLn('Jugador agregado!');
         WriteLn();
     end;
 end;
 
-function CargarJugadores(var archivo : FileJugadores) : ArbolJugadores;
-var jugador : reg_jugador;
-    arbol : ArbolJugadores;
+function CargarJugadores(var FJugadores : FileJugadores) : ArbolJugadores;
+var RJugador : reg_jugador;
+    ArbolAux : ArbolJugadores;
 begin
-    assign(archivo, PLAYERSPATH);
-    if FileIsExists(archivo) then
-        reset(archivo)
+    assign(FJugadores, PLAYERSPATH);
+    if FileIsExists(FJugadores) then
+        reset(FJugadores)
     else
-        rewrite(archivo);
-    while not eof(archivo) do begin
-        read(archivo, jugador);
-        InsertarJugadorArbol(arbol, CrearNodoJugador(jugador));
+        rewrite(FJugadores);
+    while not eof(FJugadores) do begin
+        read(FJugadores, RJugador);
+        InsertarJugadorArbol(ArbolAux, CrearNodoJugador(RJugador));
     end;
-    close(archivo);
+    close(FJugadores);
     
-    CargarJugadores := arbol;
+    CargarJugadores := ArbolAux;
 end;
 
-procedure VerJugadores(arbol : ArbolJugadores);
+procedure VerJugadores(AJugadores : ArbolJugadores);
 begin
-    if arbol <> nil then
+    if AJugadores <> nil then
     begin
-        VerJugadores(arbol^.Izquierda);
+        VerJugadores(AJugadores^.Izquierda);
         
         WriteLn('--------------');
-        write('Jugador: '); WriteLn(arbol^.Nombre);
-        write('Partidas Ganadas: '); WriteLn(arbol^.PartidasGanadas);
+        write('Jugador: '); WriteLn(AJugadores^.Nombre);
+        write('Partidas Ganadas: '); WriteLn(AJugadores^.PartidasGanadas);
         WriteLn('--------------');
         
-        VerJugadores(arbol^.Derecha);
+        VerJugadores(AJugadores^.Derecha);
     end;
 end;
 
-procedure AgregarVictoriaJugadorArbol(var arbol : ArbolJugadores; nombre : string);
+procedure AgregarVictoriaJugadorArbol(var AJugadores : ArbolJugadores; nombre : string);
 begin
-    if arbol <> nil then
+    if AJugadores <> nil then
     begin
-        if arbol^.Nombre > nombre then
-            AgregarVictoriaJugadorArbol(arbol^.Izquierda, nombre)
-        else if arbol^.Nombre < nombre then
-            AgregarVictoriaJugadorArbol(arbol^.Derecha, nombre)
+        if AJugadores^.Nombre > nombre then
+            AgregarVictoriaJugadorArbol(AJugadores^.Izquierda, nombre)
+        else if AJugadores^.Nombre < nombre then
+            AgregarVictoriaJugadorArbol(AJugadores^.Derecha, nombre)
         else
-            arbol^.PartidasGanadas := arbol^.PartidasGanadas + 1;
+            AJugadores^.PartidasGanadas := AJugadores^.PartidasGanadas + 1;
     end;
 end;
 
-procedure AgregarVictoriaJugadorArchivo(var archivo : FileJugadores; nombre : string);
+procedure AgregarVictoriaJugadorArchivo(var FJugadores : FileJugadores; nombre : string);
 var jugador : reg_jugador;
     playerFound : boolean;
 begin
     playerFound := false;
-    reset(archivo);
-    while (not eof(archivo)) and (not playerFound) do
+    reset(FJugadores);
+    while (not eof(FJugadores)) and (not playerFound) do
     begin
-        read(archivo, jugador);
+        read(FJugadores, jugador);
         if jugador.nombre = nombre then
             playerFound := true;
     end;
         
-    seek(archivo, filepos(archivo)-1);
+    seek(FJugadores, filepos(FJugadores)-1);
     jugador.partidas_ganadas := jugador.partidas_ganadas + 1;
-    write(archivo, jugador);
-    close(archivo);
+    write(FJugadores, jugador);
+    close(FJugadores);
 end;
 
-procedure AgregarVictoriaJugador(var arbol : ArbolJugadores; var archivo : FileJugadores; nombre : string);
+procedure AgregarVictoriaJugador(var AJugadores : ArbolJugadores; var FJugadores : FileJugadores; nombre : string);
 begin
-    AgregarVictoriaJugadorArbol(arbol, nombre);
-    AgregarVictoriaJugadorArchivo(archivo, nombre);
+    AgregarVictoriaJugadorArbol(AJugadores, nombre);
+    AgregarVictoriaJugadorArchivo(FJugadores, nombre);
 end;
 
-function ReestablecerArchivoJugadores(var archivo : FileJugadores) : ArbolJugadores; { Solo sirve para pruebas, no es parte del programa final }
+function ReestablecerArchivoJugadores(var FJugadores : FileJugadores) : ArbolJugadores; { Solo sirve para pruebas, no es parte del programa final }
 begin
-    rewrite(archivo);
-    close(archivo);
-    ReestablecerArchivoJugadores := CargarJugadores(archivo);
+    rewrite(FJugadores);
+    close(FJugadores);
+    ReestablecerArchivoJugadores := CargarJugadores(FJugadores);
     WriteLn('Archivo reestablecido');
-    WriteLn();
+    WriteLn;
 end;
 { END: Sistema de Jugadores }
 
 { BEGIN: Sistema de Palabras (Rosco) }
-function CrearNodoRosco(registro : reg_palabra) : ListaRosco;
-var nodo : ListaRosco;
+function CrearNodoRosco(RPalabra : reg_palabra) : ListaRosco;
+var NodoRosco : ListaRosco;
 begin
-    new(nodo);
-    nodo^.Letra := registro.letra;
-    nodo^.Palabra := registro.palabra;
-    nodo^.Consigna := registro.consigna;
-    nodo^.Respuesta := Pendiente;
-    nodo^.Siguiente := nil;
+    new(NodoRosco);
+    NodoRosco^.Letra := RPalabra.letra;
+    NodoRosco^.Palabra := RPalabra.palabra;
+    NodoRosco^.Consigna := RPalabra.consigna;
+    NodoRosco^.Respuesta := Pendiente;
+    NodoRosco^.Siguiente := nil;
     
-    CrearNodoRosco := nodo;
+    CrearNodoRosco := NodoRosco;
 end;
 
-procedure InsertarRoscoLista(var lista : ListaRosco; nodo : ListaRosco);
+procedure InsertarRoscoLista(var Rosco : ListaRosco; nodo : ListaRosco);
 var enlace : ListaRosco;
 begin
-    if lista = nil then
+    if Rosco = nil then
     begin
-        lista := nodo;
-        lista^.Siguiente := lista;
+        Rosco := nodo;
+        Rosco^.Siguiente := Rosco;
     end
     else
     begin
-        enlace := lista;
-        while (enlace^.Siguiente <> lista) do
+        enlace := Rosco;
+        while (enlace^.Siguiente <> Rosco) do
             enlace := enlace^.Siguiente;
         
-        nodo^.Siguiente := lista;
+        nodo^.Siguiente := Rosco;
         enlace^.Siguiente := nodo;
     end;
 end;
 
-function CargarRosco(var archivo : FileRosco; num_set : integer) : ListaRosco;
-var palabra : reg_palabra;
-    lista : ListaRosco;
+function CargarRosco(var FRosco : FileRosco; num_set : integer) : ListaRosco;
+var RPalabra : reg_palabra;
+    Rosco : ListaRosco;
 begin
-    lista := nil;
-    reset(archivo);
-    while not eof(archivo) do begin
-        read(archivo, palabra);
-        if palabra.nro_set = num_set then
-            InsertarRoscoLista(lista, CrearNodoRosco(palabra));
+    Rosco := nil;
+    reset(FRosco);
+    while not eof(FRosco) do begin
+        read(FRosco, RPalabra);
+        if RPalabra.nro_set = num_set then
+            InsertarRoscoLista(Rosco, CrearNodoRosco(RPalabra));
     end;
-    close(archivo);
+    close(FRosco);
     
-    CargarRosco := lista;
+    CargarRosco := Rosco;
 end;
 
-procedure MostrarRosco(var archivo : FileRosco); { Testeos }
-var palabra : reg_palabra;
+procedure MostrarRosco(var FRosco : FileRosco); { Testeos }
+var RPalabra : reg_palabra;
 begin
-    reset(archivo);
+    reset(FRosco);
     while not eof(archivo) do
     begin
-        read(archivo, palabra);
+        read(archivo, RPalabra);
         WriteLn('----------');
-        WriteLn(palabra.nro_set);
-        WriteLn(palabra.letra);
-        WriteLn(palabra.palabra);
-        WriteLn(palabra.consigna);
+        WriteLn(RPalabra.nro_set);
+        WriteLn(RPalabra.letra);
+        WriteLn(RPalabra.palabra);
+        WriteLn(RPalabra.consigna);
         WriteLn('----------');
     end;
+    close(FRosco);
 end;
 
-procedure InicializarRosco(var archivo : FileRosco);
+procedure InicializarRosco(var FRosco : FileRosco);
 begin
-    assign(archivo, ROSCOPATH);
+    assign(FRosco, ROSCOPATH);
 end;
 { END: Sistema de Palabras }
 
 { BEGIN: Juego }
-procedure AgregarJugadoresPartida(var APartida : ArregloPartida; AJugadores : ArbolJugadores);
+procedure AgregarJugadoresPartida(var ArrPartida : ArregloPartida; AJugadores : ArbolJugadores);
 var nombreJugador : string;
     jugadorValido : boolean;
     i : integer;
@@ -290,22 +290,22 @@ begin
             Write('Ingrese un nombre para el jugador: '); readln(nombreJugador);
             if not JugadorExiste(AJugadores, nombreJugador) then
                 WriteLn('El jugador no existe, intente con otro')
-            else if (i > 1) and (nombreJugador = APartida[i-1].NombreJugador) then { Funciona si sólo son 2 jugadores }
+            else if (i > 1) and (nombreJugador = ArrPartida[i-1].NombreJugador) then { Funciona si sólo son 2 jugadores }
             begin
                 WriteLn(nombreJugador, ' ya es el jugador ', i-1, ', seleccione otro!');
             end
             else
                 jugadorValido := true;
         end;
-        APartida[i].NombreJugador := nombreJugador;
+        ArrPartida[i].NombreJugador := nombreJugador;
     end;
 end;
 
-procedure CargarJugadoresRosco(var APartida : ArregloPartida; var FRosco : FileRosco);
+procedure CargarJugadoresRosco(var ArrPartida : ArregloPartida; var FRosco : FileRosco);
 var i : integer;
 begin
     for i := 1 to MAXJUGADORES do
-        APartida[i].Rosco := CargarRosco(FRosco, Random(5)+1);
+        ArrPartida[i].Rosco := CargarRosco(FRosco, Random(5)+1);
 end;
 
 function ExistePendientes(Rosco : ListaRosco) : boolean;
@@ -347,7 +347,7 @@ begin
     Rosco := enlace;
 end;
 
-procedure MostrarPalabra(var Rosco : ListaRosco);
+procedure MostrarPalabra(Rosco : ListaRosco);
 begin
     WriteLn('----------');
     WriteLn('Letra: ', Rosco^.Letra);
@@ -377,7 +377,7 @@ begin
         WriteLn('Pasapalabra!');
 end;
 
-procedure TurnoJugador(var Jugador : reg_partida; var finished : boolean);
+function TurnoJugador(var Jugador : reg_partida) : boolean;
 var finTurno : boolean;
 begin
     finTurno := false;
@@ -388,19 +388,22 @@ begin
         ResponderPalabra(Jugador.Rosco);
 
         if Jugador.Rosco^.Respuesta <> Acertada then
+        begin
+            TurnoJugador := false;
             finTurno := true;
+        end;
 
         if ExistePendientes(Jugador.Rosco) then
             AvanzarRosco(Jugador.Rosco)
         else
         begin
-            finished := true;
+            TurnoJugador := true;
             finTurno := true;
         end;
     end;
 end;
 
-procedure Partida(var APartida : ArregloPartida);
+procedure Partida(var ArrPartida : ArregloPartida);
 var finPartida : boolean;
     turno : integer;
 begin
@@ -408,7 +411,7 @@ begin
     turno := 1;
     while not finPartida do
     begin
-        TurnoJugador(APartida[turno], finPartida);
+        finPartida := TurnoJugador(ArrPartida[turno]);
         
         if turno < MAXJUGADORES then
             turno := turno + 1
@@ -417,30 +420,30 @@ begin
     end;
 end;
 
-procedure DefinirGanador(APartida : ArregloPartida; var AJugadores : ArbolJugadores; var FJugadores : FileJugadores);
+procedure DefinirGanador(ArrPartida : ArregloPartida; var AJugadores : ArbolJugadores; var FJugadores : FileJugadores);
 begin
-    if ContarAcertadas(APartida[1].Rosco) > ContarAcertadas(APartida[2].Rosco) then
+    if ContarAcertadas(ArrPartida[1].Rosco) > ContarAcertadas(ArrPartida[2].Rosco) then
     begin
-        WriteLn(APartida[1].NombreJugador, ' ha ganado!');
-        AgregarVictoriaJugador(AJugadores, FJugadores, APartida[1].NombreJugador);
+        WriteLn(ArrPartida[1].NombreJugador, ' ha ganado!');
+        AgregarVictoriaJugador(AJugadores, FJugadores, ArrPartida[1].NombreJugador);
     end
-    else if ContarAcertadas(APartida[1].Rosco) < ContarAcertadas(APartida[2].Rosco) then
+    else if ContarAcertadas(ArrPartida[1].Rosco) < ContarAcertadas(ArrPartida[2].Rosco) then
     begin
-        WriteLn(APartida[2].NombreJugador, ' ha ganado!');
-        AgregarVictoriaJugador(AJugadores, FJugadores, APartida[2].NombreJugador);
+        WriteLn(ArrPartida[2].NombreJugador, ' ha ganado!');
+        AgregarVictoriaJugador(AJugadores, FJugadores, ArrPartida[2].NombreJugador);
     end
     else
         WriteLn('Empate!');
 end;
 
 procedure IniciarJuego(var AJugadores : ArbolJugadores; var FJugadores : FileJugadores; var FRosco : FileRosco);
-var APartida : ArregloPartida;
+var ArrPartida : ArregloPartida;
 begin
-    AgregarJugadoresPartida(APartida, AJugadores);
-    CargarJugadoresRosco(APartida, FRosco);
+    AgregarJugadoresPartida(ArrPartida, AJugadores);
+    CargarJugadoresRosco(ArrPartida, FRosco);
     WriteLn('Comenzando partida...');
-    Partida(APartida);
-    DefinirGanador(APartida, AJugadores, FJugadores);
+    Partida(ArrPartida);
+    DefinirGanador(ArrPartida, AJugadores, FJugadores);
 end;
 { END: Juego }
 
